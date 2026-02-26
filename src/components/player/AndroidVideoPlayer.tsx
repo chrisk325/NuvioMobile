@@ -60,6 +60,7 @@ import { storageService } from '../../services/storageService';
 import stremioService from '../../services/stremioService';
 import { WyzieSubtitle, SubtitleCue } from './utils/playerTypes';
 import { findBestSubtitleTrack, findBestAudioTrack } from './utils/trackSelectionUtils';
+import { buildExoAudioTrackName, buildExoSubtitleTrackName } from './android/components/VideoSurface';
 import { useTheme } from '../../contexts/ThemeContext';
 import axios from 'axios';
 
@@ -350,7 +351,7 @@ const AndroidVideoPlayer: React.FC = () => {
       const formatted = data.audioTracks.map((t: any, i: number) => ({
         // react-native-video selectedAudioTrack {type:'index'} uses 0-based list index.
         id: i,
-        name: t.title || t.name || `Track ${i + 1}`,
+        name: buildExoAudioTrackName(t, i),
         language: t.language
       }));
       tracksHook.setRnVideoAudioTracks(formatted);
@@ -360,7 +361,7 @@ const AndroidVideoPlayer: React.FC = () => {
         // react-native-video selectedTextTrack {type:'index'} uses 0-based list index.
         // Using `t.index` can be non-unique/misaligned and breaks selection/rendering.
         id: i,
-        name: t.title || t.name || `Track ${i + 1}`,
+        name: buildExoSubtitleTrackName(t, i),
         language: t.language
       }));
       tracksHook.setRnVideoTextTracks(formatted);
