@@ -221,16 +221,117 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
         onEnd();
     };
 
+    // Maps ExoPlayer mimeType strings to human-readable codec names
+    const exoMimeToCodec = (mimeType?: string): string | null => {
+        if (!mimeType) return null;
+        const mime = mimeType.toLowerCase();
+        if (mime.includes('eac3') || mime.includes('ec-3')) return 'EAC3';
+        if (mime.includes('ac3') || mime.includes('ac-3')) return 'AC3';
+        if (mime.includes('truehd')) return 'TrueHD';
+        if (mime.includes('dts-hd') || mime.includes('dtshd')) return 'DTS-HD';
+        if (mime.includes('dts')) return 'DTS';
+        if (mime.includes('aac')) return 'AAC';
+        if (mime.includes('opus')) return 'Opus';
+        if (mime.includes('vorbis')) return 'Vorbis';
+        if (mime.includes('mp4a') || mime.includes('mpeg')) return 'MP3';
+        if (mime.includes('flac')) return 'FLAC';
+        return null;
+    };
+
+    const LANG_MAP: Record<string, string> = {
+        en: 'English', eng: 'English',
+        es: 'Spanish', spa: 'Spanish',
+        fr: 'French', fre: 'French',
+        de: 'German', ger: 'German',
+        it: 'Italian', ita: 'Italian',
+        ja: 'Japanese', jpn: 'Japanese',
+        ko: 'Korean', kor: 'Korean',
+        zh: 'Chinese', chi: 'Chinese',
+        ru: 'Russian', rus: 'Russian',
+        pt: 'Portuguese', por: 'Portuguese',
+        hi: 'Hindi', hin: 'Hindi',
+        ar: 'Arabic', ara: 'Arabic',
+        nl: 'Dutch', dut: 'Dutch',
+        pl: 'Polish', pol: 'Polish',
+        tr: 'Turkish', tur: 'Turkish',
+    };
+
+    // Builds a rich audio track label e.g. "English EAC3 5.1 640 kbps"
+    const buildAudioTrackName = (t: any, i: number): string => {
+        const parts: string[] = [];
+
+        // Parse channel count encoded as "|ch:N" appended to title by Java
+        let rawTitle: string = t.title ?? '';
+        let channelCount: number | null = null;
+        const chMatch = rawTitle.match(/\|ch:(\d+)$/);
+        if (chMatch) {
+            channelCount = parseInt(chMatch[1], 10);
+            rawTitle = rawTitle.replace(/\|ch:\d+$/, '').trim();
+        }
+
+        if (rawTitle) {
+            parts.push(rawTitle);
+        } else if (t.language) {
+            parts.push(LANG_MAP[t.language.toLowerCase()] ?? t.language.toUpperCase());
+        }
+
+        const codec = exoMimeToCodec(t.mimeType);
+        if (codec) parts.push(codec);
+
+        const ch = channelCount ?? t.channelCount ?? null;
+        if (ch != null && ch > 0) {
+            if (ch === 8) parts.push('7.1');
+            else if (ch === 6) parts.push('5.1');
+            else if (ch === 2) parts.push('2.0');
+            else if (ch === 1) parts.push('Mono');
+            else parts.push(`${ch}ch`);
+        }
+
+        if (t.bitrate != null && t.bitrate > 0) {
+            const kbps = Math.round(t.bitrate / 1000);
+            parts.push(`${kbps} kbps`);
+        }
+
+        return parts.length > 0 ? parts.join(' ') : `Track ${i + 1}`;
+    };
+
+    // Builds a rich subtitle track label e.g. "English SDH" or "French Forced"
+    const buildSubtitleTrackName = (t: any, i: number): string => {
+        const parts: string[] = [];
+        const titleLower = (t.title ?? '').toLowerCase();
+
+        if (t.title && t.title.trim()) {
+            parts.push(t.title.trim());
+        } else if (t.language) {
+            parts.push(LANG_MAP[t.language.toLowerCase()] ?? t.language.toUpperCase());
+        }
+
+        if (
+            t.isHearingImpaired ||
+            titleLower.includes('sdh') ||
+            titleLower.includes('hearing impaired') ||
+            titleLower.includes('cc')
+        ) {
+            if (!titleLower.includes('sdh')) parts.push('SDH');
+        }
+
+        if (t.isForced || titleLower.includes('forced')) {
+            if (!titleLower.includes('forced')) parts.push('Forced');
+        }
+
+        return parts.length > 0 ? parts.join(' ') : `Track ${i + 1}`;
+    };
+
     const handleExoLoad = (data: any) => {
         const audioTracks = data.audioTracks?.map((t: any, i: number) => ({
             id: i,
-            name: t.title || t.language || `Track ${i + 1}`,
+            name: buildAudioTrackName(t, i),
             language: t.language,
         })) ?? [];
 
         const subtitleTracks = data.textTracks?.map((t: any, i: number) => ({
             id: i,
-            name: t.title || t.language || `Track ${i + 1}`,
+            name: buildSubtitleTrackName(t, i),
             language: t.language,
         })) ?? [];
 
