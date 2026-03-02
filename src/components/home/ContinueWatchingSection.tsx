@@ -1180,11 +1180,11 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
 
               // IMPORTANT:
               // In Trakt-auth mode, the "most recently watched" ordering should reflect local playback,
-              // not Trakt's paused_at (which can be stale or even appear newer than local).
-              // So: if we have any local match, use its timestamp for ordering.
-              const mergedLastUpdated = (mostRecentLocal.lastUpdated ?? 0) > 0
-                ? (mostRecentLocal.lastUpdated ?? 0)
-                : (it.lastUpdated ?? 0);
+              // Use Trakt's paused_at as the primary ordering timestamp (it.lastUpdated),
+              // falling back to local lastUpdated only if Trakt has no timestamp.
+              const mergedLastUpdated = (it.lastUpdated ?? 0) > 0
+                ? (it.lastUpdated ?? 0)
+                : (mostRecentLocal.lastUpdated ?? 0);
 
               try {
                 logger.log('[CW][Trakt][Overlay] item/local summary', {
