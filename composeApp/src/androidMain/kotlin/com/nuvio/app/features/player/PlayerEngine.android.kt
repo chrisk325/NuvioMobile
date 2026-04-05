@@ -435,11 +435,33 @@ private fun ExoPlayer.extractAudioTracks(): List<AudioTrack> {
     for (group in currentTracks.groups) {
         if (group.type != C.TRACK_TYPE_AUDIO) continue
         val format = group.mediaTrackGroup.getFormat(0)
+        val channelLabel = when {
+            format.channelCount == 1 -> "Mono"
+            format.channelCount == 2 -> "Stereo"
+            format.channelCount == 6 -> "5.1"
+            format.channelCount == 8 -> "7.1"
+            format.channelCount > 0 -> "${format.channelCount}ch"
+            else -> null
+        }
+        val codecLabel = when {
+            format.sampleMimeType == null -> null
+            format.sampleMimeType!!.contains("eac3", ignoreCase = true) -> "E-AC-3"
+            format.sampleMimeType!!.contains("ac3", ignoreCase = true) -> "AC-3"
+            format.sampleMimeType!!.contains("opus", ignoreCase = true) -> "Opus"
+            format.sampleMimeType!!.contains("aac", ignoreCase = true) -> "AAC"
+            format.sampleMimeType!!.contains("dts", ignoreCase = true) -> "DTS"
+            format.sampleMimeType!!.contains("truehd", ignoreCase = true) -> "TrueHD"
+            else -> null
+        }
+        val baseName = format.label?.takeIf { it.isNotBlank() } ?: format.language ?: "Track ${idx + 1}"
+        val suffix = listOfNotNull(channelLabel, codecLabel)
+            .joinToString(" ")
+            .let { if (it.isNotBlank()) " ($it)" else "" }
         tracks.add(
             AudioTrack(
                 index = idx,
                 id = format.id ?: idx.toString(),
-                label = format.label ?: "",
+                label = "$baseName$suffix",
                 language = format.language,
                 isSelected = group.isSelected,
             )
