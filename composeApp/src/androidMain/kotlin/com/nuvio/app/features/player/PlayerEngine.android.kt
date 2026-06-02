@@ -248,12 +248,7 @@ actual fun PlatformPlayerSurface(
         Log.d(TAG, "$reason: preserving audio track index=${selection.index} id=${selection.id}")
     }
 
-    DisposableEffect(exoPlayer) {
-        PlayerPictureInPictureManager.registerPausePlaybackCallback {
-            exoPlayer.pause()
-        }
-
-        val listener = object : Player.Listener {
+        val listener = remember(exoPlayer) { object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 syncPlayerViewKeepScreenOn()
                 if (
@@ -323,11 +318,15 @@ actual fun PlatformPlayerSurface(
                     }
                 }
                 latestOnSnapshot.value(exoPlayer.snapshot())
-            }
-
+           }
+       }
+   }   
+   DisposableEffect(exoPlayer) {
+        PlayerPictureInPictureManager.registerPausePlaybackCallback {
+            exoPlayer.pause()
         }
         exoPlayer.addListener(listener)
-        onDispose {
+        onDispose {     
             PlayerPictureInPictureManager.registerPausePlaybackCallback(null)
             exoPlayer.removeListener(listener)
             playerViewRef?.keepScreenOn = false
@@ -354,6 +353,7 @@ actual fun PlatformPlayerSurface(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.removeListener(listener)
             exoPlayer.release()
         }
     }
